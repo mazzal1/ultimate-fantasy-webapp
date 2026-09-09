@@ -1,0 +1,559 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Ultimate Fantasy TTRPG backend
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues:
+      - dev
+      - delivery
+      - prod
+    Default: dev
+  CognitoUserPoolId:
+    Type: String
+  CognitoUserPoolClientId:
+    Type: String
+  DocumentDbUri:
+    Type: AWS::SSM::Parameter::Value<String>
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 15
+    MemorySize: 256
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        DOCUMENTDB_URI: !Ref DocumentDbUri
+        COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
+        COGNITO_USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClientId
+
+Resources:
+  GraphQlApi:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      Name: !Sub ultimate-fantasy-${Stage}
+      AuthenticationType: AMAZON_COGNITO_USER_POOLS
+      UserPoolConfig:
+        AwsRegion: !Ref AWS::Region
+        DefaultAction: ALLOW
+        UserPoolId: !Ref CognitoUserPoolId
+      AdditionalAuthenticationProviders:
+        - AuthenticationType: API_KEY
+      XrayEnabled: true
+
+  GraphQlSchema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt GraphQlApi.ApiId
+      Definition: |
+        scalar AWSDateTime
+
+        type Character {
+          id: ID!
+          userId: ID!
+          name: String!
+          background: String
+          level: Int!
+          currentHp: Int!
+          maxHp: Int!
+          currentStamina: Int!
+          maxStamina: Int!
+          currentMana: Int!
+          maxMana: Int!
+          strength: Int!
+          dexterity: Int!
+          constitution: Int!
+          intelligence: Int!
+          wisdom: Int!
+          charisma: Int!
+          skills: [ID!]
+          createdAt: AWSDateTime!
+          updatedAt: AWSDateTime!
+        }
+
+        type Campaign {
+          id: ID!
+          name: String!
+          description: String
+          notes: String
+          gameMasterId: ID!
+          playerIds: [ID!]!
+          characterIds: [ID!]!
+          createdAt: AWSDateTime!
+          updatedAt: AWSDateTime!
+        }
+
+        type Skill {
+          id: ID!
+          name: String!
+          effect: String!
+          rank: Int!
+          minLevelRequirement: Int
+          requiredSkillId: ID
+          requiredSkillRank: Int
+          tags: [String!]!
+          createdAt: AWSDateTime!
+          updatedAt: AWSDateTime!
+        }
+
+        type User {
+          id: ID!
+          email: String!
+          username: String!
+          characterCount: Int!
+        }
+
+        type Query {
+          getCharacter(id: ID!): Character
+          listMyCharacters: [Character!]!
+          getCampaign(id: ID!): Campaign
+          listMyCampaigns: [Campaign!]!
+          listSkills: [Skill!]!
+          getSkill(id: ID!): Skill
+          getMe: User
+        }
+
+        type Mutation {
+          createCharacter(input: CreateCharacterInput!): Character!
+          updateCharacter(id: ID!, input: UpdateCharacterInput!): Character!
+          deleteCharacter(id: ID!): Boolean!
+          createCampaign(input: CreateCampaignInput!): Campaign!
+          updateCampaign(id: ID!, input: UpdateCampaignInput!): Campaign!
+          joinCampaign(campaignId: ID!): Campaign!
+          assignCharacterToCampaign(campaignId: ID!, characterId: ID!): Campaign!
+          createSkill(input: CreateSkillInput!): Skill!
+          updateSkill(id: ID!, input: UpdateSkillInput!): Skill!
+        }
+
+        input CreateCharacterInput {
+          name: String!
+          background: String
+          level: Int
+          maxHp: Int
+          maxStamina: Int
+          maxMana: Int
+          strength: Int
+          dexterity: Int
+          constitution: Int
+          intelligence: Int
+          wisdom: Int
+          charisma: Int
+        }
+
+        input UpdateCharacterInput {
+          name: String
+          background: String
+          level: Int
+          currentHp: Int
+          maxHp: Int
+          currentStamina: Int
+          maxStamina: Int
+          currentMana: Int
+          maxMana: Int
+          strength: Int
+          dexterity: Int
+          constitution: Int
+          intelligence: Int
+          wisdom: Int
+          charisma: Int
+          skills: [ID!]
+        }
+
+        input CreateCampaignInput {
+          name: String!
+          description: String
+          notes: String
+        }
+
+        input UpdateCampaignInput {
+          name: String
+          description: String
+          notes: String
+        }
+
+        input CreateSkillInput {
+          name: String!
+          effect: String!
+          rank: Int!
+          minLevelRequirement: Int
+          requiredSkillId: ID
+          requiredSkillRank: Int
+          tags: [String!]
+        }
+
+        input UpdateSkillInput {
+          name: String
+          effect: String
+          rank: Int
+          minLevelRequirement: Int
+          requiredSkillId: ID
+          requiredSkillRank: Int
+          tags: [String!]
+        }
+
+  GraphQlApiKey:
+    Type: AWS::AppSync::ApiKey
+    Properties:
+      ApiId: !GetAtt GraphQlApi.ApiId
+      Expires: 1924905600
+
+  ResolverFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  AppSyncInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeResolverFunctions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: '*'
+
+  CreateCharacterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/characters/createCharacter.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  GetCharacterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/characters/getCharacter.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  ListCharactersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/characters/listCharacters.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  UpdateCharacterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/characters/updateCharacter.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  DeleteCharacterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/characters/deleteCharacter.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  CreateCampaignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/campaigns/createCampaign.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  GetCampaignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/campaigns/getCampaign.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  ListCampaignsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/campaigns/listCampaigns.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  UpdateCampaignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/campaigns/updateCampaign.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  JoinCampaignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/campaigns/joinCampaign.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  AssignCharacterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/campaigns/assignCharacter.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  CreateSkillFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/skills/createSkill.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  ListSkillsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/skills/listSkills.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  GetSkillFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/skills/getSkill.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  UpdateSkillFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/skills/updateSkill.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+  GetMeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: resolvers/users/getMe.handler
+      Role: !GetAtt ResolverFunctionRole.Arn
+
+  CharactersCreateDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties: &lambda_ds
+      ApiId: !GetAtt GraphQlApi.ApiId
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncInvokeRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt CreateCharacterFunction.Arn
+      Name: CreateCharacterDataSource
+  CharacterGetDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt GetCharacterFunction.Arn
+      Name: GetCharacterDataSource
+  CharactersListDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt ListCharactersFunction.Arn
+      Name: ListCharactersDataSource
+  CharacterUpdateDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt UpdateCharacterFunction.Arn
+      Name: UpdateCharacterDataSource
+  CharacterDeleteDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt DeleteCharacterFunction.Arn
+      Name: DeleteCharacterDataSource
+  CampaignCreateDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt CreateCampaignFunction.Arn
+      Name: CreateCampaignDataSource
+  CampaignGetDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt GetCampaignFunction.Arn
+      Name: GetCampaignDataSource
+  CampaignListDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt ListCampaignsFunction.Arn
+      Name: ListCampaignsDataSource
+  CampaignUpdateDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt UpdateCampaignFunction.Arn
+      Name: UpdateCampaignDataSource
+  CampaignJoinDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt JoinCampaignFunction.Arn
+      Name: JoinCampaignDataSource
+  CampaignAssignDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt AssignCharacterFunction.Arn
+      Name: AssignCharacterDataSource
+  SkillCreateDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt CreateSkillFunction.Arn
+      Name: CreateSkillDataSource
+  SkillListDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt ListSkillsFunction.Arn
+      Name: ListSkillsDataSource
+  SkillGetDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt GetSkillFunction.Arn
+      Name: GetSkillDataSource
+  SkillUpdateDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt UpdateSkillFunction.Arn
+      Name: UpdateSkillDataSource
+  GetMeDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      <<: *lambda_ds
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt GetMeFunction.Arn
+      Name: GetMeDataSource
+
+  GetCharacterResolver:
+    Type: AWS::AppSync::Resolver
+    Properties: &resolver_props
+      ApiId: !GetAtt GraphQlApi.ApiId
+      RequestMappingTemplate: '{"version":"2017-02-28","operation":"Invoke","payload":$util.toJson($context)}'
+      ResponseMappingTemplate: '$util.toJson($context.result)'
+      TypeName: Query
+      FieldName: getCharacter
+      DataSourceName: !GetAtt CharacterGetDataSource.Name
+  ListMyCharactersResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      FieldName: listMyCharacters
+      DataSourceName: !GetAtt CharactersListDataSource.Name
+  GetCampaignResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      FieldName: getCampaign
+      DataSourceName: !GetAtt CampaignGetDataSource.Name
+  ListMyCampaignsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      FieldName: listMyCampaigns
+      DataSourceName: !GetAtt CampaignListDataSource.Name
+  ListSkillsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      FieldName: listSkills
+      DataSourceName: !GetAtt SkillListDataSource.Name
+  GetSkillResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      FieldName: getSkill
+      DataSourceName: !GetAtt SkillGetDataSource.Name
+  GetMeResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      FieldName: getMe
+      DataSourceName: !GetAtt GetMeDataSource.Name
+  CreateCharacterResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: createCharacter
+      DataSourceName: !GetAtt CharactersCreateDataSource.Name
+  UpdateCharacterResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: updateCharacter
+      DataSourceName: !GetAtt CharacterUpdateDataSource.Name
+  DeleteCharacterResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: deleteCharacter
+      DataSourceName: !GetAtt CharacterDeleteDataSource.Name
+  CreateCampaignResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: createCampaign
+      DataSourceName: !GetAtt CampaignCreateDataSource.Name
+  UpdateCampaignResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: updateCampaign
+      DataSourceName: !GetAtt CampaignUpdateDataSource.Name
+  JoinCampaignResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: joinCampaign
+      DataSourceName: !GetAtt CampaignJoinDataSource.Name
+  AssignCharacterResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: assignCharacterToCampaign
+      DataSourceName: !GetAtt CampaignAssignDataSource.Name
+  CreateSkillResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: createSkill
+      DataSourceName: !GetAtt SkillCreateDataSource.Name
+  UpdateSkillResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      <<: *resolver_props
+      TypeName: Mutation
+      FieldName: updateSkill
+      DataSourceName: !GetAtt SkillUpdateDataSource.Name
+
+Outputs:
+  GraphQlApiUrl:
+    Value: !GetAtt GraphQlApi.GraphQLUrl
+  GraphQlApiKey:
+    Value: !GetAtt GraphQlApiKey.ApiKey

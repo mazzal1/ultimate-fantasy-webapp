@@ -1,0 +1,15 @@
+{
+  "name": "ultimate-fantasy-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "mongoose": "^8.8.3"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}
