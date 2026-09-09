@@ -12,7 +12,7 @@ export function loadConfigFromArgv(argv = []) {
   }
 
   const stage = args.get('stage') || process.env.UF_STAGE || 'dev';
-  const region = args.get('region') || process.env.UF_REGION || process.env.AWS_REGION || 'us-east-1';
+  const region = args.get('region') || process.env.UF_REGION || process.env.AWS_REGION || 'eu-west-1';
   const stackName = args.get('stack-name') || process.env.UF_STACK_NAME || `ultimate-fantasy-${stage}`;
 
   return { stage, region, stackName };

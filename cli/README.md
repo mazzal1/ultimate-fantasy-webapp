@@ -15,4 +15,6 @@
 - `UF_STACK_NAME`
 - `AWS_REGION`
 
+When no region is provided explicitly, the CLI defaults to `eu-west-1`.
+
 The CLI shells out to AWS SAM for deploy and teardown, and uses the AWS SDK for status and parameter helpers.

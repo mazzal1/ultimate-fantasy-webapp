@@ -12,6 +12,9 @@ permissions:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    env:
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_REGION: eu-west-1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,7 +53,7 @@ jobs:
         working-directory: backend
         run: |
           if command -v sam >/dev/null 2>&1; then
-            sam validate
+            sam validate --region "${AWS_DEFAULT_REGION}"
           else
             echo "SAM CLI not installed; skipping validation"
           fi

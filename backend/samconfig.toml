@@ -2,24 +2,25 @@ version = 0.1
 
 [default.global.parameters]
 stack_name = "ultimate-fantasy"
+region = "eu-west-1"
 
 [dev.deploy.parameters]
 stack_name = "ultimate-fantasy-dev"
 resolve_s3 = true
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "Stage=dev CognitoUserPoolId=us-east-1_example CognitoUserPoolClientId=exampleclientid DocumentDbUri=/ultimate-fantasy/dev/documentdb-uri"
+parameter_overrides = "Stage=dev CognitoUserPoolId=eu-west-1_example CognitoUserPoolClientId=exampleclientid DocumentDbUri=/ultimate-fantasy/dev/documentdb-uri"
 
 [delivery.deploy.parameters]
 stack_name = "ultimate-fantasy-delivery"
 resolve_s3 = true
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "Stage=delivery CognitoUserPoolId=us-east-1_example CognitoUserPoolClientId=exampleclientid DocumentDbUri=/ultimate-fantasy/delivery/documentdb-uri"
+parameter_overrides = "Stage=delivery CognitoUserPoolId=eu-west-1_example CognitoUserPoolClientId=exampleclientid DocumentDbUri=/ultimate-fantasy/delivery/documentdb-uri"
 
 [prod.deploy.parameters]
 stack_name = "ultimate-fantasy-prod"
 resolve_s3 = true
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "Stage=prod CognitoUserPoolId=us-east-1_example CognitoUserPoolClientId=exampleclientid DocumentDbUri=/ultimate-fantasy/prod/documentdb-uri"
+parameter_overrides = "Stage=prod CognitoUserPoolId=eu-west-1_example CognitoUserPoolClientId=exampleclientid DocumentDbUri=/ultimate-fantasy/prod/documentdb-uri"
