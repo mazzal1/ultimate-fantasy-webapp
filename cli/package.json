@@ -1,0 +1,16 @@
+{
+  "name": "ultimate-fantasy-cli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "uf-cli": "./bin/uf-cli.js"
+  },
+  "scripts": {
+    "status": "node ./bin/uf-cli.js status --stage dev"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudformation": "^3.670.0",
+    "@aws-sdk/client-ssm": "^3.670.0"
+  }
+}
