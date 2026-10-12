@@ -1,0 +1,26 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "ultimate-fantasy"
+region = "eu-west-1"
+
+[dev.deploy.parameters]
+stack_name = "ultimate-fantasy-dev"
+resolve_s3 = true
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Stage=dev CognitoUserPoolId=/ultimate-fantasy/dev/auth/user-pool-id CognitoUserPoolClientId=/ultimate-fantasy/dev/auth/user-pool-client-id LambdaSubnetIds=/ultimate-fantasy/dev/network/private-subnet-ids LambdaSecurityGroupId=/ultimate-fantasy/dev/network/lambda-security-group-id SharedLambdaExecutionRoleArn=/ultimate-fantasy/dev/network/shared-lambda-role-arn PostgresUri=/ultimate-fantasy/dev/data/postgres-uri"
+
+[delivery.deploy.parameters]
+stack_name = "ultimate-fantasy-delivery"
+resolve_s3 = true
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Stage=delivery CognitoUserPoolId=/ultimate-fantasy/delivery/auth/user-pool-id CognitoUserPoolClientId=/ultimate-fantasy/delivery/auth/user-pool-client-id LambdaSubnetIds=/ultimate-fantasy/delivery/network/private-subnet-ids LambdaSecurityGroupId=/ultimate-fantasy/delivery/network/lambda-security-group-id SharedLambdaExecutionRoleArn=/ultimate-fantasy/delivery/network/shared-lambda-role-arn PostgresUri=/ultimate-fantasy/delivery/data/postgres-uri"
+
+[prod.deploy.parameters]
+stack_name = "ultimate-fantasy-prod"
+resolve_s3 = true
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Stage=prod CognitoUserPoolId=/ultimate-fantasy/prod/auth/user-pool-id CognitoUserPoolClientId=/ultimate-fantasy/prod/auth/user-pool-client-id LambdaSubnetIds=/ultimate-fantasy/prod/network/private-subnet-ids LambdaSecurityGroupId=/ultimate-fantasy/prod/network/lambda-security-group-id SharedLambdaExecutionRoleArn=/ultimate-fantasy/prod/network/shared-lambda-role-arn PostgresUri=/ultimate-fantasy/prod/data/postgres-uri"

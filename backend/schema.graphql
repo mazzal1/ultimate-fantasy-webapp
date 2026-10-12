@@ -1,0 +1,144 @@
+scalar AWSDateTime
+
+type Character {
+  id: ID!
+  userId: ID!
+  name: String!
+  background: String
+  level: Int!
+  currentHp: Int!
+  maxHp: Int!
+  currentStamina: Int!
+  maxStamina: Int!
+  currentMana: Int!
+  maxMana: Int!
+  strength: Int!
+  dexterity: Int!
+  constitution: Int!
+  intelligence: Int!
+  wisdom: Int!
+  charisma: Int!
+  skills: [ID!]
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Campaign {
+  id: ID!
+  name: String!
+  description: String
+  notes: String
+  gameMasterId: ID!
+  playerIds: [ID!]!
+  characterIds: [ID!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Skill {
+  id: ID!
+  name: String!
+  effect: String!
+  rank: Int!
+  minLevelRequirement: Int
+  requiredSkillId: ID
+  requiredSkillRank: Int
+  tags: [String!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type User {
+  id: ID!
+  email: String!
+  username: String!
+  characterCount: Int!
+}
+
+type Query {
+  getCharacter(id: ID!): Character
+  listMyCharacters: [Character!]!
+  getCampaign(id: ID!): Campaign
+  listMyCampaigns: [Campaign!]!
+  listSkills: [Skill!]!
+  getSkill(id: ID!): Skill
+  getMe: User
+}
+
+type Mutation {
+  createCharacter(input: CreateCharacterInput!): Character!
+  updateCharacter(id: ID!, input: UpdateCharacterInput!): Character!
+  deleteCharacter(id: ID!): Boolean!
+  createCampaign(input: CreateCampaignInput!): Campaign!
+  updateCampaign(id: ID!, input: UpdateCampaignInput!): Campaign!
+  joinCampaign(campaignId: ID!): Campaign!
+  assignCharacterToCampaign(campaignId: ID!, characterId: ID!): Campaign!
+  createSkill(input: CreateSkillInput!): Skill!
+  updateSkill(id: ID!, input: UpdateSkillInput!): Skill!
+}
+
+input CreateCharacterInput {
+  name: String!
+  background: String
+  level: Int
+  maxHp: Int
+  maxStamina: Int
+  maxMana: Int
+  strength: Int
+  dexterity: Int
+  constitution: Int
+  intelligence: Int
+  wisdom: Int
+  charisma: Int
+}
+
+input UpdateCharacterInput {
+  name: String
+  background: String
+  level: Int
+  currentHp: Int
+  maxHp: Int
+  currentStamina: Int
+  maxStamina: Int
+  currentMana: Int
+  maxMana: Int
+  strength: Int
+  dexterity: Int
+  constitution: Int
+  intelligence: Int
+  wisdom: Int
+  charisma: Int
+  skills: [ID!]
+}
+
+input CreateCampaignInput {
+  name: String!
+  description: String
+  notes: String
+}
+
+input UpdateCampaignInput {
+  name: String
+  description: String
+  notes: String
+}
+
+input CreateSkillInput {
+  name: String!
+  effect: String!
+  rank: Int!
+  minLevelRequirement: Int
+  requiredSkillId: ID
+  requiredSkillRank: Int
+  tags: [String!]
+}
+
+input UpdateSkillInput {
+  name: String
+  effect: String
+  rank: Int
+  minLevelRequirement: Int
+  requiredSkillId: ID
+  requiredSkillRank: Int
+  tags: [String!]
+}
