@@ -3,7 +3,7 @@
 ## Repository structure
 
 - `frontend/`: React + Vite + TypeScript UI.
-- `backend/`: AWS SAM application with AppSync and DocumentDB.
+- `backend/`: AWS SAM application with AppSync and Amazon RDS for PostgreSQL.
 - `cli/`: Node.js operational tooling.
 - `docs/`: Long-form technical documentation.
 
@@ -27,7 +27,7 @@
 - Resolvers should stay small and delegate validation to utilities.
 - Parse user identity from AppSync context in middleware.
 - Keep ownership checks explicit for character and campaign access.
-- Use mongoose models for DocumentDB documents.
+- Use PostgreSQL-backed models for RDS records.
 
 ## CLI conventions
 

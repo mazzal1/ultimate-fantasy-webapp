@@ -11,10 +11,16 @@ Parameters:
       - prod
     Default: dev
   CognitoUserPoolId:
-    Type: String
+    Type: AWS::SSM::Parameter::Value<String>
   CognitoUserPoolClientId:
-    Type: String
-  DocumentDbUri:
+    Type: AWS::SSM::Parameter::Value<String>
+  LambdaSubnetIds:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+  LambdaSecurityGroupId:
+    Type: AWS::SSM::Parameter::Value<String>
+  SharedLambdaExecutionRoleArn:
+    Type: AWS::SSM::Parameter::Value<String>
+  PostgresUri:
     Type: AWS::SSM::Parameter::Value<String>
 
 Globals:
@@ -22,10 +28,15 @@ Globals:
     Runtime: nodejs20.x
     Timeout: 15
     MemorySize: 256
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroupId
+      SubnetIds: !Ref LambdaSubnetIds
     Environment:
       Variables:
         STAGE: !Ref Stage
-        DOCUMENTDB_URI: !Ref DocumentDbUri
+        POSTGRES_URI: !Ref PostgresUri
+        POSTGRES_SSL: 'true'
         COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
         COGNITO_USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClientId
 
@@ -197,20 +208,6 @@ Resources:
     Type: AWS::AppSync::ApiKey
     Properties:
       ApiId: !GetAtt GraphQlApi.ApiId
-      Expires: 1924905600
-
-  ResolverFunctionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
   AppSyncInvokeRole:
     Type: AWS::IAM::Role
@@ -234,99 +231,99 @@ Resources:
   CreateCharacterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/characters/createCharacter.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/characters/createCharacter.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   GetCharacterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/characters/getCharacter.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/characters/getCharacter.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   ListCharactersFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/characters/listCharacters.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/characters/listCharacters.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   UpdateCharacterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/characters/updateCharacter.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/characters/updateCharacter.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   DeleteCharacterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/characters/deleteCharacter.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/characters/deleteCharacter.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   CreateCampaignFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/campaigns/createCampaign.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/campaigns/createCampaign.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   GetCampaignFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/campaigns/getCampaign.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/campaigns/getCampaign.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   ListCampaignsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/campaigns/listCampaigns.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/campaigns/listCampaigns.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   UpdateCampaignFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/campaigns/updateCampaign.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/campaigns/updateCampaign.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   JoinCampaignFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/campaigns/joinCampaign.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/campaigns/joinCampaign.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   AssignCharacterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/campaigns/assignCharacter.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/campaigns/assignCharacter.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   CreateSkillFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/skills/createSkill.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/skills/createSkill.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   ListSkillsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/skills/listSkills.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/skills/listSkills.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   GetSkillFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/skills/getSkill.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/skills/getSkill.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   UpdateSkillFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/skills/updateSkill.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/skills/updateSkill.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
   GetMeFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
-      Handler: resolvers/users/getMe.handler
-      Role: !GetAtt ResolverFunctionRole.Arn
+      CodeUri: ./
+      Handler: src/resolvers/users/getMe.handler
+      Role: !Ref SharedLambdaExecutionRoleArn
 
   CharactersCreateDataSource:
     Type: AWS::AppSync::DataSource

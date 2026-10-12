@@ -5,7 +5,7 @@ Ultimate Fantasy TTRPG is a full-stack monorepo for managing fantasy tabletop RP
 ## Monorepo layout
 
 - `frontend/` React + Vite + TypeScript client with Amplify auth and AppSync GraphQL access.
-- `backend/` AWS SAM serverless backend with AppSync, Lambda resolvers, Cognito auth, and DocumentDB models.
+- `backend/` AWS SAM serverless backend with AppSync, Lambda resolvers, Cognito auth, and Amazon RDS for PostgreSQL persistence.
 - `cli/` Node.js deployment and operations CLI.
 - `docs/` Architecture, setup, deployment, API, design system, and database docs.
 - `.github/` CI automation and agent instructions.

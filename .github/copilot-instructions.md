@@ -5,7 +5,7 @@
 Ultimate Fantasy TTRPG is a monorepo with:
 
 - `frontend/`: React + Vite + TypeScript
-- `backend/`: AWS SAM + AppSync + Lambda + DocumentDB
+- `backend/`: AWS SAM + AppSync + Lambda + Amazon RDS for PostgreSQL
 - `cli/`: Node.js deployment tooling
 - `docs/`: architecture and operational documentation
 

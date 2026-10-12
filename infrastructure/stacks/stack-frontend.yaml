@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Ultimate Fantasy React static hosting resources
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues:
+      - dev
+      - delivery
+      - prod
+    Default: dev
+  FrontendBucketName:
+    Type: String
+    Default: ''
+  CustomDomainName:
+    Type: String
+    Default: ''
+  AcmCertificateArn:
+    Type: String
+    Default: ''
+  Route53HostedZoneId:
+    Type: String
+    Default: ''
+  CloudFrontPriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+
+Conditions:
+  HasCustomBucketName: !Not [!Equals [!Ref FrontendBucketName, '']]
+  HasCustomDomainName: !Not [!Equals [!Ref CustomDomainName, '']]
+  HasAcmCertificateArn: !Not [!Equals [!Ref AcmCertificateArn, '']]
+  HasHostedZone: !Not [!Equals [!Ref Route53HostedZoneId, '']]
+  UseCustomDomain: !And [!Condition HasCustomDomainName, !Condition HasAcmCertificateArn]
+  CreateRoute53Record: !And [!Condition UseCustomDomain, !Condition HasHostedZone]
+
+Resources:
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - HasCustomBucketName
+        - !Ref FrontendBucketName
+        - !Sub ultimate-fantasy-${Stage}-${AWS::AccountId}-${AWS::Region}-frontend
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: false
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: false
+      VersioningConfiguration:
+        Status: Enabled
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        PriceClass: !Ref CloudFrontPriceClass
+        Aliases: !If [UseCustomDomain, [!Ref CustomDomainName], !Ref AWS::NoValue]
+        Origins:
+          - DomainName: !Select [2, !Split ["/", !GetAtt FrontendBucket.WebsiteURL]]
+            Id: s3Origin
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          TargetOriginId: s3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        ViewerCertificate: !If
+          - UseCustomDomain
+          - AcmCertificateArn: !Ref AcmCertificateArn
+            MinimumProtocolVersion: TLSv1.2_2021
+            SslSupportMethod: sni-only
+          - CloudFrontDefaultCertificate: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowPublicReadForWebsiteOrigin
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub ${FrontendBucket.Arn}/*
+
+  FrontendDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateRoute53Record
+    Properties:
+      HostedZoneId: !Ref Route53HostedZoneId
+      Name: !Ref CustomDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt FrontendDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  FrontendBucketNameSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/frontend/s3-bucket-name
+      Type: String
+      Value: !Ref FrontendBucket
+
+  FrontendCloudFrontDomainSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/frontend/cloudfront-domain-name
+      Type: String
+      Value: !GetAtt FrontendDistribution.DomainName
+
+  FrontendCloudFrontDistributionIdSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/frontend/cloudfront-distribution-id
+      Type: String
+      Value: !Ref FrontendDistribution
+
+Outputs:
+  FrontendBucketName:
+    Value: !Ref FrontendBucket
+  CloudFrontDistributionId:
+    Value: !Ref FrontendDistribution
+  CloudFrontDomainName:
+    Value: !GetAtt FrontendDistribution.DomainName

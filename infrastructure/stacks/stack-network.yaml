@@ -1,0 +1,267 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Ultimate Fantasy shared network and base security resources
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues:
+      - dev
+      - delivery
+      - prod
+    Default: dev
+  VpcCidr:
+    Type: String
+    Default: 10.40.0.0/16
+  PublicSubnetACidr:
+    Type: String
+    Default: 10.40.0.0/20
+  PublicSubnetBCidr:
+    Type: String
+    Default: 10.40.16.0/20
+  PrivateSubnetACidr:
+    Type: String
+    Default: 10.40.32.0/20
+  PrivateSubnetBCidr:
+    Type: String
+    Default: 10.40.48.0/20
+
+Resources:
+  NetworkVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-igw
+
+  VpcIgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref NetworkVpc
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PublicSubnetACidr
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref NetworkVpc
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-public-a
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PublicSubnetBCidr
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref NetworkVpc
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-public-b
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnetACidr
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref NetworkVpc
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-private-a
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnetBCidr
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref NetworkVpc
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-private-b
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref NetworkVpc
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcIgwAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetARouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+
+  PublicSubnetBRouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB
+
+  NatElasticIp:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcIgwAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatElasticIp.AllocationId
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-nat
+
+  PrivateRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref NetworkVpc
+
+  PrivateDefaultRouteA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetARouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      SubnetId: !Ref PrivateSubnetA
+
+  PrivateRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref NetworkVpc
+
+  PrivateDefaultRouteB:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetBRouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      SubnetId: !Ref PrivateSubnetB
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda egress baseline
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref NetworkVpc
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-lambda-sg
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS ingress only from Lambda security group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      VpcId: !Ref NetworkVpc
+      Tags:
+        - Key: Name
+          Value: !Sub ultimate-fantasy-${Stage}-rds-sg
+
+  SharedLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      RoleName: !Sub ultimate-fantasy-${Stage}-shared-lambda-role
+
+  VpcIdSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/network/vpc-id
+      Type: String
+      Value: !Ref NetworkVpc
+
+  PublicSubnetIdsSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/network/public-subnet-ids
+      Type: StringList
+      Value: !Join [",", [!Ref PublicSubnetA, !Ref PublicSubnetB]]
+
+  PrivateSubnetIdsSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/network/private-subnet-ids
+      Type: StringList
+      Value: !Join [",", [!Ref PrivateSubnetA, !Ref PrivateSubnetB]]
+
+  LambdaSecurityGroupIdSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/network/lambda-security-group-id
+      Type: String
+      Value: !Ref LambdaSecurityGroup
+
+  DatabaseSecurityGroupIdSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/network/database-security-group-id
+      Type: String
+      Value: !Ref DatabaseSecurityGroup
+
+  SharedLambdaRoleArnSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/network/shared-lambda-role-arn
+      Type: String
+      Value: !GetAtt SharedLambdaExecutionRole.Arn
+
+Outputs:
+  VpcId:
+    Value: !Ref NetworkVpc
+  PublicSubnetIds:
+    Value: !Join [",", [!Ref PublicSubnetA, !Ref PublicSubnetB]]
+  PrivateSubnetIds:
+    Value: !Join [",", [!Ref PrivateSubnetA, !Ref PrivateSubnetB]]
+  LambdaSecurityGroupId:
+    Value: !Ref LambdaSecurityGroup
+  DatabaseSecurityGroupId:
+    Value: !Ref DatabaseSecurityGroup
+  SharedLambdaExecutionRoleArn:
+    Value: !GetAtt SharedLambdaExecutionRole.Arn

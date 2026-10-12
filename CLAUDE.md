@@ -34,5 +34,5 @@ cd backend && npm test
 
 - Cognito group membership determines admin access.
 - AppSync invokes Lambda resolvers with identity metadata.
-- DocumentDB persistence is modeled through mongoose schemas.
+- RDS PostgreSQL persistence is modeled through backend database models.
 - The frontend uses token-driven inline styles, not CSS frameworks.

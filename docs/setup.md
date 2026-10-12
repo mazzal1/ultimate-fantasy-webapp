@@ -35,4 +35,16 @@ npm test
 sam validate
 ```
 
-Set `DOCUMENTDB_URI` and Cognito values before invoking Lambda locally or deploying.
+Set `POSTGRES_URI`, `POSTGRES_SSL`, and Cognito values before invoking Lambda locally or deploying.
+
+## Infrastructure deployment
+
+Deploy the split infrastructure stacks through the CLI:
+
+```bash
+cd cli
+npm install
+node ./bin/uf-cli.js deploy --stage dev
+```
+
+This provisions network, auth, data, backend, and frontend stacks and synchronizes cross-stack values with SSM Parameter Store under `/ultimate-fantasy/dev/...`.

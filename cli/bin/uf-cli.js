@@ -19,7 +19,7 @@ const commands = {
 };
 
 if (!command || !commands[command]) {
-  logger.error('Usage: uf-cli <deploy|teardown|migrate|seed|status> [--stage <name>] [--region <aws-region>]');
+  logger.error('Usage: uf-cli <deploy|teardown|migrate|seed|status> [--stage <name>] [--region <aws-region>] [--stack-name <prefix>]');
   process.exit(1);
 }
 

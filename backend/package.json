@@ -7,7 +7,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "mongoose": "^8.8.3"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "vitest": "^4.1.11"

@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Ultimate Fantasy authentication resources
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues:
+      - dev
+      - delivery
+      - prod
+    Default: dev
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ultimate-fantasy-${Stage}-users
+      AutoVerifiedAttributes:
+        - email
+      AliasAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - Name: display_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: 1
+            MaxLength: 64
+        - Name: preferred_class
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: 1
+            MaxLength: 32
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub ultimate-fantasy-${Stage}-frontend
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+  IdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Sub ultimateFantasy${Stage}Identities
+      AllowUnauthenticatedIdentities: false
+      CognitoIdentityProviders:
+        - ClientId: !Ref UserPoolClient
+          ProviderName: !GetAtt UserPool.ProviderName
+
+  AuthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ultimate-fantasy-${Stage}-cognito-auth-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref IdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: authenticated
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonCognitoPowerUser
+
+  IdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+        authenticated: !GetAtt AuthenticatedRole.Arn
+
+  UserPoolIdSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/auth/user-pool-id
+      Type: String
+      Value: !Ref UserPool
+
+  UserPoolClientIdSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/auth/user-pool-client-id
+      Type: String
+      Value: !Ref UserPoolClient
+
+  IdentityPoolIdSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/auth/identity-pool-id
+      Type: String
+      Value: !Ref IdentityPool
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+  IdentityPoolId:
+    Value: !Ref IdentityPool
+  AuthenticatedRoleArn:
+    Value: !GetAtt AuthenticatedRole.Arn

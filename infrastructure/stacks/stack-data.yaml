@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Ultimate Fantasy PostgreSQL data resources
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues:
+      - dev
+      - delivery
+      - prod
+    Default: dev
+  NetworkPrivateSubnetIdsParameter:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+  NetworkDatabaseSecurityGroupIdParameter:
+    Type: AWS::SSM::Parameter::Value<String>
+  DbName:
+    Type: String
+    Default: ultimatefantasy
+  DbInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  DbAllocatedStorage:
+    Type: Number
+    Default: 20
+
+Conditions:
+  IsProd: !Equals [!Ref Stage, prod]
+
+Resources:
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Ultimate Fantasy private subnets
+      SubnetIds: !Ref NetworkPrivateSubnetIdsParameter
+      DBSubnetGroupName: !Sub ultimate-fantasy-${Stage}-db-subnets
+
+  RdsMasterSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ultimate-fantasy/${Stage}/rds/master
+      Description: Master credentials for the Ultimate Fantasy PostgreSQL database
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"uf_master"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+        IncludeSpace: false
+        RequireEachIncludedType: true
+
+  PostgreSqlInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref DbAllocatedStorage
+      DBInstanceClass: !Ref DbInstanceClass
+      DBInstanceIdentifier: !Sub ultimate-fantasy-${Stage}
+      DBName: !Ref DbName
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      DeletionProtection: !If [IsProd, true, false]
+      Engine: postgres
+      EngineVersion: '16.9'
+      MasterUsername: !Sub '{{resolve:secretsmanager:${RdsMasterSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${RdsMasterSecret}:SecretString:password}}'
+      MultiAZ: !If [IsProd, true, false]
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      VPCSecurityGroups:
+        - !Ref NetworkDatabaseSecurityGroupIdParameter
+
+  RdsSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref RdsMasterSecret
+      TargetId: !Ref PostgreSqlInstance
+      TargetType: AWS::RDS::DBInstance
+
+  DbEndpointSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/data/db-endpoint
+      Type: String
+      Value: !GetAtt PostgreSqlInstance.Endpoint.Address
+
+  DbPortSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/data/db-port
+      Type: String
+      Value: !GetAtt PostgreSqlInstance.Endpoint.Port
+
+  DbNameSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/data/db-name
+      Type: String
+      Value: !Ref DbName
+
+  DbSecretArnSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/data/db-secret-arn
+      Type: String
+      Value: !Ref RdsMasterSecret
+
+  PostgresUriSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /ultimate-fantasy/${Stage}/data/postgres-uri
+      Type: String
+      Value: !Sub postgresql://{{resolve:secretsmanager:${RdsMasterSecret}:SecretString:username}}:{{resolve:secretsmanager:${RdsMasterSecret}:SecretString:password}}@${PostgreSqlInstance.Endpoint.Address}:${PostgreSqlInstance.Endpoint.Port}/${DbName}
+
+Outputs:
+  DbEndpoint:
+    Value: !GetAtt PostgreSqlInstance.Endpoint.Address
+  DbPort:
+    Value: !GetAtt PostgreSqlInstance.Endpoint.Port
+  DbName:
+    Value: !Ref DbName
+  DbSecretArn:
+    Value: !Ref RdsMasterSecret

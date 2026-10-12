@@ -2,7 +2,8 @@
 
 ## Overview
 
-Ultimate Fantasy TTRPG uses a React frontend, AppSync GraphQL API, Lambda resolvers, Cognito auth, and DocumentDB persistence.
+Ultimate Fantasy TTRPG uses a React frontend, AppSync GraphQL API, Lambda resolvers, Cognito auth, and Amazon RDS for PostgreSQL persistence.
+Infrastructure is split into dedicated CloudFormation stacks (`network`, `auth`, `data`, `backend`, `frontend`) coordinated through SSM Parameter Store.
 
 ```mermaid
 flowchart LR
@@ -10,9 +11,17 @@ flowchart LR
   Frontend --> Cognito[Cognito User Pool]
   Frontend --> AppSync[AppSync GraphQL API]
   AppSync --> Lambda[Lambda Resolvers]
-  Lambda --> DocumentDB[(DocumentDB via mongoose)]
-  CLI[UF CLI] --> CloudFormation[AWS SAM / CloudFormation]
-  CLI --> SSM[SSM Parameter Store]
+  Lambda --> RDS[(Amazon RDS for PostgreSQL)]
+  CLI[UF CLI] --> NetworkStack[stack-network]
+  CLI --> AuthStack[stack-auth]
+  CLI --> DataStack[stack-data]
+  CLI --> BackendStack[stack-backend]
+  CLI --> FrontendStack[stack-frontend]
+  NetworkStack --> SSM[SSM Parameter Store]
+  AuthStack --> SSM
+  DataStack --> SSM
+  FrontendStack --> SSM
+  BackendStack --> SSM
 ```
 
 ## Frontend responsibilities
@@ -26,5 +35,5 @@ flowchart LR
 
 - Authorize users from AppSync identity metadata.
 - Enforce ownership and admin rules.
-- Persist characters, campaigns, and skills in DocumentDB.
+- Persist characters, campaigns, and skills in PostgreSQL tables on Amazon RDS.
 - Expose focused GraphQL query and mutation handlers.
