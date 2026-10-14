@@ -1,123 +1,75 @@
-import { randomUUID } from 'node:crypto';
-import { runQuery } from '../connection.js';
-import { buildOrderBy, toIsoString } from './postgresModelUtils.js';
+import { Ability } from './Ability.js';
 
-const skillSortFields = {
-  rank: 'rank',
-  name: 'name',
-  updatedAt: 'updated_at',
-  createdAt: 'created_at',
-};
+function toSkillPayload(input) {
+  return {
+    ...input,
+    kind: 'SKILL',
+    description: input.description ?? input.effect ?? '',
+    maxRank: input.maxRank ?? 'F',
+    activationType: input.activationType ?? 'ACTION',
+    manaCost: input.manaCost ?? 0,
+    staminaCost: input.staminaCost ?? 0,
+    requiredAbilityIds: input.requiredAbilityIds ?? (input.requiredSkillId ? [input.requiredSkillId] : []),
+  };
+}
 
-function fromRow(row) {
-  if (!row) {
+function mapSkillPayload(base) {
+  return {
+    id: base.id,
+    ownerUserId: base.ownerUserId,
+    name: base.name,
+    description: base.description,
+    maxRank: base.maxRank,
+    activationType: base.activationType,
+    manaCost: base.manaCost,
+    staminaCost: base.staminaCost,
+    minLevelRequirement: base.minLevelRequirement,
+    requiredAbilityIds: base.requiredAbilityIds,
+    requiredTitleIds: base.requiredTitleIds,
+    tags: base.tags,
+    isSystem: base.isSystem,
+    sharedCampaignIds: base.sharedCampaignIds,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
+  };
+}
+
+function decorateSkillDocument(document) {
+  if (!document) {
     return null;
   }
 
-  return new SkillDocument({
-    id: row.id,
-    name: row.name,
-    effect: row.effect,
-    rank: row.rank,
-    minLevelRequirement: row.min_level_requirement,
-    requiredSkillId: row.required_skill_id,
-    requiredSkillRank: row.required_skill_rank,
-    tags: row.tags ?? [],
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  });
-}
-
-class SkillDocument {
-  constructor(data) {
-    Object.assign(this, data);
-  }
-
-  async save() {
-    const { rows } = await runQuery(
-      `
-        UPDATE skills
-        SET
-          name = $2,
-          effect = $3,
-          rank = $4,
-          min_level_requirement = $5,
-          required_skill_id = $6,
-          required_skill_rank = $7,
-          tags = $8,
-          updated_at = NOW()
-        WHERE id = $1
-        RETURNING *
-      `,
-      [
-        this.id,
-        this.name,
-        this.effect,
-        this.rank,
-        this.minLevelRequirement ?? null,
-        this.requiredSkillId ?? null,
-        this.requiredSkillRank ?? null,
-        this.tags ?? [],
-      ],
-    );
-
-    const next = fromRow(rows[0]);
-    Object.assign(this, next);
-    return this;
-  }
-
-  toJSON() {
-    return {
-      id: this.id,
-      name: this.name,
-      effect: this.effect,
-      rank: this.rank,
-      minLevelRequirement: this.minLevelRequirement,
-      requiredSkillId: this.requiredSkillId,
-      requiredSkillRank: this.requiredSkillRank,
-      tags: this.tags ?? [],
-      createdAt: toIsoString(this.createdAt),
-      updatedAt: toIsoString(this.updatedAt),
-    };
-  }
+  const originalToJSON = document.toJSON.bind(document);
+  document.toJSON = () => mapSkillPayload(originalToJSON());
+  return document;
 }
 
 export const Skill = {
   async create(data) {
-    const { rows } = await runQuery(
-      `
-        INSERT INTO skills (
-          id, name, effect, rank, min_level_requirement, required_skill_id, required_skill_rank, tags
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING *
-      `,
-      [
-        data.id ?? randomUUID(),
-        data.name,
-        data.effect,
-        data.rank,
-        data.minLevelRequirement ?? null,
-        data.requiredSkillId ?? null,
-        data.requiredSkillRank ?? null,
-        data.tags ?? [],
-      ],
-    );
-
-    return fromRow(rows[0]);
+    const created = await Ability.create(toSkillPayload(data));
+    return decorateSkillDocument(created);
   },
 
   async findById(id) {
-    const { rows } = await runQuery('SELECT * FROM skills WHERE id = $1 LIMIT 1', [id]);
-    return fromRow(rows[0]);
+    const ability = await Ability.findById(id);
+    if (!ability || ability.kind !== 'SKILL') {
+      return null;
+    }
+
+    return decorateSkillDocument(ability);
   },
 
-  find() {
+  find(filter = {}) {
     return {
-      sort: async (sortOptions) => {
-        const orderBy = buildOrderBy(sortOptions, skillSortFields, 'ORDER BY rank ASC, name ASC');
-        const { rows } = await runQuery(`SELECT * FROM skills ${orderBy}`);
-        return rows.map((row) => fromRow(row));
+      sort: async () => {
+        const items = await Ability.findVisible({
+          viewerUserId: filter.viewerUserId ?? '',
+          campaignIds: filter.campaignIds ?? [],
+          kind: 'SKILL',
+          tag: filter.tag,
+          search: filter.search,
+        });
+        return items.map((item) => decorateSkillDocument(item));
       },
     };
   },

@@ -1,10 +1,12 @@
 import { Link, Navigate } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
 import { useAuth } from '../hooks/useAuth';
+import { useI18n } from '../hooks/useI18n';
 import { Typography, tokens } from '../design-system';
 
 export function LoginPage() {
   const { isAuthenticated } = useAuth();
+  const { t } = useI18n();
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -15,7 +17,7 @@ export function LoginPage() {
       <div style={{ display: 'grid', gap: tokens.spacing.md, justifyItems: 'center' }}>
         <LoginForm />
         <Typography>
-          Need an account? <Link to="/register" style={{ color: tokens.colors.secondary }}>Register here</Link>
+          {t('auth.needAccount')} <Link to="/register" style={{ color: tokens.colors.secondary }}>{t('auth.registerHere')}</Link>
         </Typography>
       </div>
     </div>

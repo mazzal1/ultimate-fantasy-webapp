@@ -10,6 +10,7 @@ const { skillModel } = vi.hoisted(() => ({
 
 vi.mock('../../src/db/connection.js', () => ({ connectToDatabase: vi.fn().mockResolvedValue({}) }));
 vi.mock('../../src/db/models/Skill.js', () => ({ Skill: skillModel }));
+vi.mock('../../src/resolvers/shared/visibility.js', () => ({ getUserCampaignIds: vi.fn().mockResolvedValue([]) }));
 
 import { handler as createSkill } from '../../src/resolvers/skills/createSkill.js';
 import { handler as listSkills } from '../../src/resolvers/skills/listSkills.js';
@@ -35,7 +36,7 @@ describe('skill resolvers', () => {
 
     const result = await createSkill({
       ...adminEvent,
-      arguments: { input: { name: 'Arc Burst', effect: 'Deal arcane damage', rank: 2, tags: ['Action'] } },
+      arguments: { input: { name: 'Arc Burst', description: 'Deal arcane damage', maxRank: 'D', tags: ['Action'] } },
     });
 
     expect(skillModel.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Arc Burst', tags: ['Action'] }));
@@ -45,7 +46,7 @@ describe('skill resolvers', () => {
   it('lists skills ordered query results', async () => {
     skillModel.find.mockReturnValue({ sort: vi.fn().mockResolvedValue([{ toJSON: () => ({ id: 'skill-2' }) }]) });
 
-    const result = await listSkills({});
+    const result = await listSkills(adminEvent);
 
     expect(result).toEqual([{ id: 'skill-2' }]);
   });

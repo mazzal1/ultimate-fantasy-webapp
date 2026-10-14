@@ -1,26 +1,92 @@
 scalar AWSDateTime
 
+enum Rank {
+  F
+  E
+  D
+  C
+  B
+  A
+  S
+}
+
+enum AbilityKind {
+  SKILL
+  ITEM
+}
+
 type Character {
   id: ID!
   userId: ID!
   name: String!
+  playerName: String
+  gender: String
+  race: String
+  age: Int
   background: String
   level: Int!
+  statPoints: Int!
+  skillPoints: Int!
+  coreStats: CoreStats!
   currentHp: Int!
   maxHp: Int!
-  currentStamina: Int!
-  maxStamina: Int!
   currentMana: Int!
   maxMana: Int!
-  strength: Int!
-  dexterity: Int!
-  constitution: Int!
-  intelligence: Int!
-  wisdom: Int!
-  charisma: Int!
-  skills: [ID!]
+  currentStamina: Int!
+  maxStamina: Int!
+  wounds: Int!
+  competencyStates: [CharacterCompetencyState!]!
+  skillStates: [CharacterSkillState!]!
+  titleIds: [ID!]!
+  itemStates: [CharacterItemState!]!
+  competencies: [CharacterCompetency!]!
+  skills: [CharacterSkill!]!
+  titles: [Title!]!
+  items: [CharacterItem!]!
   createdAt: AWSDateTime!
   updatedAt: AWSDateTime!
+}
+
+type CoreStats {
+  strength: Rank!
+  agility: Rank!
+  dexterity: Rank!
+  resilience: Rank!
+  magic: Rank!
+  willpower: Rank!
+  acumen: Rank!
+  charisma: Rank!
+  luck: Rank!
+}
+
+type CharacterCompetencyState {
+  competencyId: ID!
+  rank: Rank!
+}
+
+type CharacterSkillState {
+  skillId: ID!
+  rank: Rank!
+}
+
+type CharacterItemState {
+  itemId: ID!
+  equipped: Boolean!
+}
+
+type CharacterCompetency {
+  competency: Competency!
+  rank: Rank!
+}
+
+type CharacterSkill {
+  skill: Skill!
+  rank: Rank!
+}
+
+type CharacterItem {
+  item: Item!
+  equipped: Boolean!
 }
 
 type Campaign {
@@ -37,13 +103,59 @@ type Campaign {
 
 type Skill {
   id: ID!
+  ownerUserId: ID
   name: String!
-  effect: String!
-  rank: Int!
-  minLevelRequirement: Int
-  requiredSkillId: ID
-  requiredSkillRank: Int
+  description: String!
+  maxRank: Rank!
+  activationType: String!
+  manaCost: Int!
+  staminaCost: Int!
+  minLevelRequirement: Int!
+  requiredAbilityIds: [ID!]!
+  requiredTitleIds: [ID!]!
   tags: [String!]!
+  isSystem: Boolean!
+  sharedCampaignIds: [ID!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Item {
+  id: ID!
+  ownerUserId: ID
+  name: String!
+  description: String!
+  maxRank: Rank!
+  activationType: String!
+  manaCost: Int!
+  staminaCost: Int!
+  minLevelRequirement: Int!
+  requiredAbilityIds: [ID!]!
+  requiredTitleIds: [ID!]!
+  tags: [String!]!
+  isSystem: Boolean!
+  sharedCampaignIds: [ID!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Competency {
+  id: ID!
+  ownerUserId: ID
+  name: String!
+  description: String!
+  tags: [String!]!
+  isSystem: Boolean!
+  sharedCampaignIds: [ID!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Title {
+  id: ID!
+  name: String!
+  description: String!
+  isSystem: Boolean!
   createdAt: AWSDateTime!
   updatedAt: AWSDateTime!
 }
@@ -60,7 +172,11 @@ type Query {
   listMyCharacters: [Character!]!
   getCampaign(id: ID!): Campaign
   listMyCampaigns: [Campaign!]!
-  listSkills: [Skill!]!
+  listCampaignCharacters(campaignId: ID!): [Character!]!
+  listSkills(tag: String, search: String): [Skill!]!
+  listItems(tag: String, search: String): [Item!]!
+  listCompetencies(search: String): [Competency!]!
+  listTitles: [Title!]!
   getSkill(id: ID!): Skill
   getMe: User
 }
@@ -75,40 +191,84 @@ type Mutation {
   assignCharacterToCampaign(campaignId: ID!, characterId: ID!): Campaign!
   createSkill(input: CreateSkillInput!): Skill!
   updateSkill(id: ID!, input: UpdateSkillInput!): Skill!
+  shareSkill(skillId: ID!, campaignId: ID!): Skill!
+  createCompetency(input: CreateCompetencyInput!): Competency!
+  shareCompetency(competencyId: ID!, campaignId: ID!): Competency!
+}
+
+input CoreStatsInput {
+  strength: Rank
+  agility: Rank
+  dexterity: Rank
+  resilience: Rank
+  magic: Rank
+  willpower: Rank
+  acumen: Rank
+  charisma: Rank
+  luck: Rank
+}
+
+input CharacterCompetencyStateInput {
+  competencyId: ID!
+  rank: Rank!
+}
+
+input CharacterSkillStateInput {
+  skillId: ID!
+  rank: Rank!
+}
+
+input CharacterItemStateInput {
+  itemId: ID!
+  equipped: Boolean!
 }
 
 input CreateCharacterInput {
   name: String!
+  playerName: String
+  gender: String
+  race: String
+  age: Int
   background: String
   level: Int
+  statPoints: Int
+  skillPoints: Int
+  coreStats: CoreStatsInput
+  currentHp: Int
   maxHp: Int
-  maxStamina: Int
+  currentMana: Int
   maxMana: Int
-  strength: Int
-  dexterity: Int
-  constitution: Int
-  intelligence: Int
-  wisdom: Int
-  charisma: Int
+  currentStamina: Int
+  maxStamina: Int
+  wounds: Int
+  competencyStates: [CharacterCompetencyStateInput!]
+  skillStates: [CharacterSkillStateInput!]
+  titleIds: [ID!]
+  itemStates: [CharacterItemStateInput!]
 }
 
 input UpdateCharacterInput {
   name: String
+  playerName: String
+  gender: String
+  race: String
+  age: Int
   background: String
   level: Int
+  statPoints: Int
+  skillPoints: Int
+  coreStats: CoreStatsInput
   currentHp: Int
   maxHp: Int
-  currentStamina: Int
-  maxStamina: Int
   currentMana: Int
   maxMana: Int
-  strength: Int
-  dexterity: Int
-  constitution: Int
-  intelligence: Int
-  wisdom: Int
-  charisma: Int
-  skills: [ID!]
+  currentStamina: Int
+  maxStamina: Int
+  wounds: Int
+  competencyStates: [CharacterCompetencyStateInput!]
+  skillStates: [CharacterSkillStateInput!]
+  titleIds: [ID!]
+  itemStates: [CharacterItemStateInput!]
 }
 
 input CreateCampaignInput {
@@ -125,20 +285,32 @@ input UpdateCampaignInput {
 
 input CreateSkillInput {
   name: String!
-  effect: String!
-  rank: Int!
+  description: String!
+  maxRank: Rank!
+  activationType: String
+  manaCost: Int
+  staminaCost: Int
   minLevelRequirement: Int
-  requiredSkillId: ID
-  requiredSkillRank: Int
+  requiredAbilityIds: [ID!]
+  requiredTitleIds: [ID!]
   tags: [String!]
 }
 
 input UpdateSkillInput {
   name: String
-  effect: String
-  rank: Int
+  description: String
+  maxRank: Rank
+  activationType: String
+  manaCost: Int
+  staminaCost: Int
   minLevelRequirement: Int
-  requiredSkillId: ID
-  requiredSkillRank: Int
+  requiredAbilityIds: [ID!]
+  requiredTitleIds: [ID!]
+  tags: [String!]
+}
+
+input CreateCompetencyInput {
+  name: String!
+  description: String!
   tags: [String!]
 }

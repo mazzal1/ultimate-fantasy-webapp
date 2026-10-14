@@ -1,28 +1,119 @@
 import type { Character, CharacterInput, CharacterUpdateInput } from '../types/character';
 
+const characterFields = `
+  id
+  userId
+  name
+  playerName
+  gender
+  race
+  age
+  background
+  level
+  statPoints
+  skillPoints
+  currentHp
+  maxHp
+  coreStats {
+    strength
+    agility
+    dexterity
+    resilience
+    magic
+    willpower
+    acumen
+    charisma
+    luck
+  }
+  currentMana
+  maxMana
+  currentStamina
+  maxStamina
+  wounds
+  competencyStates {
+    competencyId
+    rank
+  }
+  skillStates {
+    skillId
+    rank
+  }
+  titleIds
+  itemStates {
+    itemId
+    equipped
+  }
+  competencies {
+    rank
+    competency {
+      id
+      name
+      description
+      tags
+      isSystem
+      sharedCampaignIds
+      createdAt
+      updatedAt
+    }
+  }
+  skills {
+    rank
+    skill {
+      id
+      ownerUserId
+      name
+      description
+      maxRank
+      activationType
+      manaCost
+      staminaCost
+      minLevelRequirement
+      requiredAbilityIds
+      requiredTitleIds
+      tags
+      isSystem
+      sharedCampaignIds
+      createdAt
+      updatedAt
+    }
+  }
+  titles {
+    id
+    name
+    description
+    isSystem
+    createdAt
+    updatedAt
+  }
+  items {
+    equipped
+    item {
+      id
+      ownerUserId
+      name
+      description
+      maxRank
+      activationType
+      manaCost
+      staminaCost
+      minLevelRequirement
+      requiredAbilityIds
+      requiredTitleIds
+      tags
+      isSystem
+      sharedCampaignIds
+      createdAt
+      updatedAt
+    }
+  }
+  createdAt
+  updatedAt
+`;
+
 const listMyCharactersQuery = /* GraphQL */ `
   query ListMyCharacters {
     listMyCharacters {
-      id
-      userId
-      name
-      background
-      level
-      currentHp
-      maxHp
-      currentStamina
-      maxStamina
-      currentMana
-      maxMana
-      strength
-      dexterity
-      constitution
-      intelligence
-      wisdom
-      charisma
-      skills
-      createdAt
-      updatedAt
+      ${characterFields}
     }
   }
 `;
@@ -30,26 +121,7 @@ const listMyCharactersQuery = /* GraphQL */ `
 const getCharacterQuery = /* GraphQL */ `
   query GetCharacter($id: ID!) {
     getCharacter(id: $id) {
-      id
-      userId
-      name
-      background
-      level
-      currentHp
-      maxHp
-      currentStamina
-      maxStamina
-      currentMana
-      maxMana
-      strength
-      dexterity
-      constitution
-      intelligence
-      wisdom
-      charisma
-      skills
-      createdAt
-      updatedAt
+      ${characterFields}
     }
   }
 `;
@@ -57,25 +129,7 @@ const getCharacterQuery = /* GraphQL */ `
 const createCharacterMutation = /* GraphQL */ `
   mutation CreateCharacter($input: CreateCharacterInput!) {
     createCharacter(input: $input) {
-      id
-      userId
-      name
-      level
-      currentHp
-      maxHp
-      currentStamina
-      maxStamina
-      currentMana
-      maxMana
-      strength
-      dexterity
-      constitution
-      intelligence
-      wisdom
-      charisma
-      skills
-      createdAt
-      updatedAt
+      ${characterFields}
     }
   }
 `;
@@ -83,26 +137,7 @@ const createCharacterMutation = /* GraphQL */ `
 const updateCharacterMutation = /* GraphQL */ `
   mutation UpdateCharacter($id: ID!, $input: UpdateCharacterInput!) {
     updateCharacter(id: $id, input: $input) {
-      id
-      userId
-      name
-      background
-      level
-      currentHp
-      maxHp
-      currentStamina
-      maxStamina
-      currentMana
-      maxMana
-      strength
-      dexterity
-      constitution
-      intelligence
-      wisdom
-      charisma
-      skills
-      createdAt
-      updatedAt
+      ${characterFields}
     }
   }
 `;

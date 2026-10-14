@@ -1,44 +1,103 @@
+import type { Competency, Item, Skill, Title } from './skill';
+
+export type Rank = 'F' | 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
+
+export type CoreStats = {
+  strength: Rank;
+  agility: Rank;
+  dexterity: Rank;
+  resilience: Rank;
+  magic: Rank;
+  willpower: Rank;
+  acumen: Rank;
+  charisma: Rank;
+  luck: Rank;
+};
+
+export interface CharacterCompetencyState {
+  competencyId: string;
+  rank: Rank;
+}
+
+export interface CharacterSkillState {
+  skillId: string;
+  rank: Rank;
+}
+
+export interface CharacterItemState {
+  itemId: string;
+  equipped: boolean;
+}
+
+export interface CharacterCompetencyEntry {
+  competency: Competency;
+  rank: Rank;
+}
+
+export interface CharacterSkillEntry {
+  skill: Skill;
+  rank: Rank;
+}
+
+export interface CharacterItemEntry {
+  item: Item;
+  equipped: boolean;
+}
+
 export interface Character {
   id: string;
   userId: string;
   name: string;
+  playerName?: string;
+  gender?: string;
+  race?: string;
+  age?: number;
   background?: string;
   level: number;
+  statPoints: number;
+  skillPoints: number;
+  coreStats: CoreStats;
   currentHp: number;
   maxHp: number;
-  currentStamina: number;
-  maxStamina: number;
   currentMana: number;
   maxMana: number;
-  strength: number;
-  dexterity: number;
-  constitution: number;
-  intelligence: number;
-  wisdom: number;
-  charisma: number;
-  skills: string[];
+  currentStamina: number;
+  maxStamina: number;
+  wounds: number;
+  competencyStates: CharacterCompetencyState[];
+  skillStates: CharacterSkillState[];
+  titleIds: string[];
+  itemStates: CharacterItemState[];
+  competencies: CharacterCompetencyEntry[];
+  skills: CharacterSkillEntry[];
+  titles: Title[];
+  items: CharacterItemEntry[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CharacterInput {
   name: string;
+  playerName?: string;
+  gender?: string;
+  race?: string;
+  age?: number;
   background?: string;
   level?: number;
+  statPoints?: number;
+  skillPoints?: number;
+  coreStats?: Partial<CoreStats>;
+  currentHp?: number;
   maxHp?: number;
-  maxStamina?: number;
+  currentMana?: number;
   maxMana?: number;
-  strength?: number;
-  dexterity?: number;
-  constitution?: number;
-  intelligence?: number;
-  wisdom?: number;
-  charisma?: number;
+  currentStamina?: number;
+  maxStamina?: number;
+  wounds?: number;
+  competencyStates?: CharacterCompetencyState[];
+  skillStates?: CharacterSkillState[];
+  titleIds?: string[];
+  itemStates?: CharacterItemState[];
 }
 
-export interface CharacterUpdateInput extends Partial<CharacterInput> {
-  currentHp?: number;
-  currentStamina?: number;
-  currentMana?: number;
-  skills?: string[];
-}
+export type CharacterUpdateInput = Partial<CharacterInput>;

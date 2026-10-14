@@ -1,20 +1,33 @@
-# Database Schema
+# Database Schema (Skill Ranker / Ultimate Fantasy v0.3)
+
+## User
+
+- `id`
+- `email`
+- `username`
+- `characterCount`
+- `createdAt`, `updatedAt`
 
 ## Character
 
+- `id`
 - `userId`
 - `name`
-- `background`
-- `level`
-- `currentHp`, `maxHp`
-- `currentStamina`, `maxStamina`
+- `playerName`, `gender`, `race`, `age`, `background`
+- `level`, `statPoints`, `skillPoints`
+- `coreStats` (ranks for: strength, agility, dexterity, resilience, magic, willpower, acumen, charisma, luck)
 - `currentMana`, `maxMana`
-- `strength`, `dexterity`, `constitution`, `intelligence`, `wisdom`, `charisma`
-- `skills[]`
+- `currentStamina`, `maxStamina`
+- `wounds`
+- `competencyStates[]` (`competencyId`, `rank`)
+- `skillStates[]` (`skillId`, `rank`)
+- `titleIds[]`
+- `itemStates[]` (`itemId`, `equipped`)
 - `createdAt`, `updatedAt`
 
 ## Campaign
 
+- `id`
 - `name`
 - `description`
 - `notes`
@@ -23,19 +36,39 @@
 - `characterIds[]`
 - `createdAt`, `updatedAt`
 
-## Skill
+## Ability (Skill / Item)
 
+- `id`
+- `ownerUserId` (nullable for system abilities)
+- `kind` (`SKILL` or `ITEM`)
 - `name`
-- `effect`
-- `rank`
+- `description`
+- `maxRank`
+- `activationType`
+- `manaCost`, `staminaCost`
 - `minLevelRequirement`
-- `requiredSkillId`
-- `requiredSkillRank`
+- `requiredAbilityIds[]`
+- `requiredTitleIds[]`
 - `tags[]`
+- `isSystem`
+- `sharedCampaignIds[]`
 - `createdAt`, `updatedAt`
 
-## User
+## Competency
 
-- `email`
-- `username`
-- `characterCount`
+- `id`
+- `ownerUserId` (nullable for system competencies)
+- `name`
+- `description`
+- `tags[]`
+- `isSystem`
+- `sharedCampaignIds[]`
+- `createdAt`, `updatedAt`
+
+## Title
+
+- `id`
+- `name`
+- `description`
+- `isSystem`
+- `createdAt`, `updatedAt`

@@ -1,5 +1,6 @@
 import type { Skill } from '../../types/skill';
 import { tokens } from '../../design-system';
+import { useI18n } from '../../hooks/useI18n';
 
 type SkillSelectorProps = {
   skills: Skill[];
@@ -8,6 +9,7 @@ type SkillSelectorProps = {
 };
 
 export function SkillSelector({ skills, selectedSkillIds, onChange }: SkillSelectorProps) {
+  const { t } = useI18n();
   const toggleSkill = (skillId: string) => {
     if (selectedSkillIds.includes(skillId)) {
       onChange(selectedSkillIds.filter((id) => id !== skillId));
@@ -23,7 +25,7 @@ export function SkillSelector({ skills, selectedSkillIds, onChange }: SkillSelec
         <label key={skill.id} style={{ display: 'flex', gap: tokens.spacing.sm, alignItems: 'center' }}>
           <input type="checkbox" checked={selectedSkillIds.includes(skill.id)} onChange={() => toggleSkill(skill.id)} />
           <span>
-            {skill.name} (Rank {skill.rank})
+            {skill.name} ({t('skills.maxRankLabel', { rank: skill.maxRank })})
           </span>
         </label>
       ))}

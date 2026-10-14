@@ -1,5 +1,16 @@
 import type { Campaign, CampaignInput } from '../types/campaign';
 
+export interface CampaignCharacterSummary {
+  id: string;
+  userId: string;
+  name: string;
+  level: number;
+  race?: string;
+  gender?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const listCampaignsQuery = /* GraphQL */ `
   query ListMyCampaigns {
     listMyCampaigns {
@@ -88,6 +99,21 @@ const assignCharacterMutation = /* GraphQL */ `
   }
 `;
 
+const listCampaignCharactersQuery = /* GraphQL */ `
+  query ListCampaignCharacters($campaignId: ID!) {
+    listCampaignCharacters(campaignId: $campaignId) {
+      id
+      userId
+      name
+      level
+      race
+      gender
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export async function listCampaigns(client: { graphql: Function }): Promise<Campaign[]> {
   const response = await client.graphql({ query: listCampaignsQuery });
   return response.data.listMyCampaigns;
@@ -116,4 +142,9 @@ export async function joinCampaign(client: { graphql: Function }, campaignId: st
 export async function assignCharacterToCampaign(client: { graphql: Function }, campaignId: string, characterId: string): Promise<Campaign> {
   const response = await client.graphql({ query: assignCharacterMutation, variables: { campaignId, characterId } });
   return response.data.assignCharacterToCampaign;
+}
+
+export async function listCampaignCharacters(client: { graphql: Function }, campaignId: string): Promise<CampaignCharacterSummary[]> {
+  const response = await client.graphql({ query: listCampaignCharactersQuery, variables: { campaignId } });
+  return response.data.listCampaignCharacters;
 }

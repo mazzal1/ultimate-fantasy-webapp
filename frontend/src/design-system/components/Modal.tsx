@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { tokens } from '../tokens';
 import { Card } from './Card';
 import { Button } from './Button';
+import { useI18n } from '../../hooks/useI18n';
 
 type ModalProps = {
   isOpen: boolean;
@@ -11,6 +12,8 @@ type ModalProps = {
 };
 
 export function Modal({ isOpen, title, onClose, children }: ModalProps) {
+  const { t } = useI18n();
+
   if (!isOpen) {
     return null;
   }
@@ -33,8 +36,8 @@ export function Modal({ isOpen, title, onClose, children }: ModalProps) {
       <Card style={{ width: 'min(640px, 100%)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacing.md }}>
           <h2 style={{ margin: 0, fontFamily: tokens.fonts.heading }}>{title}</h2>
-          <Button variant="ghost" onClick={onClose} aria-label="Close modal">
-            Close
+          <Button variant="ghost" onClick={onClose} aria-label={t('modal.close')}>
+            {t('modal.close')}
           </Button>
         </div>
         {children}

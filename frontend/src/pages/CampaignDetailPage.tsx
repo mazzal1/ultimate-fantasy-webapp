@@ -5,12 +5,16 @@ import { InvitePlayer } from '../components/campaigns/InvitePlayer';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Card, Spinner, Typography, tokens } from '../design-system';
 import { useCampaigns } from '../hooks/useCampaigns';
+import { useI18n } from '../hooks/useI18n';
 import type { Campaign } from '../types/campaign';
+import type { CampaignCharacterSummary } from '../api/campaigns';
 
 export function CampaignDetailPage() {
+  const { t } = useI18n();
   const { id = '' } = useParams();
-  const { getById } = useCampaigns();
+  const { getById, listCharacters } = useCampaigns();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [characters, setCharacters] = useState<CampaignCharacterSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -26,7 +30,7 @@ export function CampaignDetailPage() {
       })
       .catch((loadError) => {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : 'Unable to load campaign.');
+          setError(loadError instanceof Error ? loadError.message : t('campaigns.loadError'));
         }
       })
       .finally(() => {
@@ -35,10 +39,22 @@ export function CampaignDetailPage() {
         }
       });
 
+    listCharacters(id)
+      .then((value) => {
+        if (active) {
+          setCharacters(value);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCharacters([]);
+        }
+      });
+
     return () => {
       active = false;
     };
-  }, [getById, id]);
+  }, [getById, id, listCharacters, t]);
 
   return (
     <AppLayout>
@@ -46,12 +62,25 @@ export function CampaignDetailPage() {
         {loading ? <Spinner /> : null}
         {error ? <Typography style={{ color: tokens.colors.error }}>{error}</Typography> : null}
         {campaign ? <CampaignDetail campaign={campaign} /> : null}
+        {!loading ? (
+          <Card>
+            <Typography as="h3">{t('campaigns.roster')}</Typography>
+            {characters.length === 0 ? <Typography muted>{t('campaigns.rosterEmpty')}</Typography> : null}
+            <div style={{ display: 'grid', gap: tokens.spacing.xs }}>
+              {characters.map((character) => (
+                <Typography key={character.id}>
+                  {character.name} — {t('common.level')} {character.level} ({character.race || t('campaigns.unknownRace')})
+                </Typography>
+              ))}
+            </div>
+          </Card>
+        ) : null}
         {message ? (
           <Card>
             <Typography style={{ color: tokens.colors.success }}>{message}</Typography>
           </Card>
         ) : null}
-        <InvitePlayer onInvite={() => setMessage('Share your secure invite workflow from Cognito/AppSync-integrated onboarding.')} />
+        <InvitePlayer onInvite={() => setMessage(t('campaigns.inviteHint'))} />
       </div>
     </AppLayout>
   );

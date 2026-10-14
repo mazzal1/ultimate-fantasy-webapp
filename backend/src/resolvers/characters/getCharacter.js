@@ -1,7 +1,8 @@
 import { connectToDatabase } from '../../db/connection.js';
 import { Character } from '../../db/models/Character.js';
 import { requireAuth } from '../../middleware/auth.js';
-import { appSyncError, toPlainDocument } from '../../utils/response.js';
+import { appSyncError } from '../../utils/response.js';
+import { serializeCharacterSheet } from './serializeCharacter.js';
 
 export async function handler(event) {
   const user = requireAuth(event);
@@ -16,5 +17,5 @@ export async function handler(event) {
     appSyncError('Forbidden');
   }
 
-  return toPlainDocument(character);
+  return serializeCharacterSheet(character);
 }

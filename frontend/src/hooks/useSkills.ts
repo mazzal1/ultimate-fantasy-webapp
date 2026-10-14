@@ -1,12 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createSkill, getSkill, listSkills, updateSkill } from '../api/skills';
+import {
+  createCompetency,
+  createSkill,
+  getSkill,
+  listCompetencies,
+  listItems,
+  listSkills,
+  listTitles,
+  shareCompetency,
+  shareSkill,
+  updateSkill,
+} from '../api/skills';
 import { useApiContext } from '../contexts/ApiContext';
-import type { Skill, SkillInput } from '../types/skill';
-import { validateSkillInput } from '../utils/validation';
+import type { Competency, CompetencyInput, Item, Skill, SkillInput, Title } from '../types/skill';
+import { validateCompetencyInput, validateSkillInput } from '../utils/validation';
 
 export function useSkills() {
   const { graphqlClient } = useApiContext();
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [competencies, setCompetencies] = useState<Competency[]>([]);
+  const [titles, setTitles] = useState<Title[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,9 +29,18 @@ export function useSkills() {
     setError(null);
 
     try {
-      setSkills(await listSkills(graphqlClient));
+      const [nextSkills, nextItems, nextCompetencies, nextTitles] = await Promise.all([
+        listSkills(graphqlClient),
+        listItems(graphqlClient),
+        listCompetencies(graphqlClient),
+        listTitles(graphqlClient),
+      ]);
+      setSkills(nextSkills);
+      setItems(nextItems);
+      setCompetencies(nextCompetencies);
+      setTitles(nextTitles);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load skills.');
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load compendium.');
     } finally {
       setLoading(false);
     }
@@ -41,6 +64,20 @@ export function useSkills() {
     [graphqlClient],
   );
 
+  const createNewCompetency = useCallback(
+    async (input: CompetencyInput) => {
+      const validationError = validateCompetencyInput(input);
+      if (validationError) {
+        throw new Error(validationError);
+      }
+
+      const created = await createCompetency(graphqlClient, input);
+      setCompetencies((current) => [...current, created]);
+      return created;
+    },
+    [graphqlClient],
+  );
+
   const getById = useCallback((id: string) => getSkill(graphqlClient, id), [graphqlClient]);
 
   const update = useCallback(
@@ -52,5 +89,37 @@ export function useSkills() {
     [graphqlClient],
   );
 
-  return { skills, loading, error, loadSkills, create, getById, update };
+  const shareSkillWithCampaign = useCallback(
+    async (skillId: string, campaignId: string) => {
+      const updated = await shareSkill(graphqlClient, skillId, campaignId);
+      setSkills((current) => current.map((skill) => (skill.id === skillId ? updated : skill)));
+      return updated;
+    },
+    [graphqlClient],
+  );
+
+  const shareCompetencyWithCampaign = useCallback(
+    async (competencyId: string, campaignId: string) => {
+      const updated = await shareCompetency(graphqlClient, competencyId, campaignId);
+      setCompetencies((current) => current.map((entry) => (entry.id === competencyId ? updated : entry)));
+      return updated;
+    },
+    [graphqlClient],
+  );
+
+  return {
+    skills,
+    items,
+    competencies,
+    titles,
+    loading,
+    error,
+    loadSkills,
+    create,
+    createCompetency: createNewCompetency,
+    getById,
+    update,
+    shareSkill: shareSkillWithCampaign,
+    shareCompetency: shareCompetencyWithCampaign,
+  };
 }

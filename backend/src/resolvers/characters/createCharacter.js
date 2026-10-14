@@ -2,8 +2,10 @@ import { connectToDatabase } from '../../db/connection.js';
 import { Character } from '../../db/models/Character.js';
 import { User } from '../../db/models/User.js';
 import { requireAuth } from '../../middleware/auth.js';
-import { toPlainDocument, appSyncError } from '../../utils/response.js';
+import { appSyncError } from '../../utils/response.js';
+import { getResourceCapFromRank } from '../../utils/gameRules.js';
 import { validateCharacterInput } from '../../utils/validation.js';
+import { serializeCharacterSheet } from './serializeCharacter.js';
 
 export async function handler(event) {
   const user = requireAuth(event);
@@ -19,28 +21,46 @@ export async function handler(event) {
   }
 
   const input = event.arguments.input;
-  const maxHp = input.maxHp ?? 10;
-  const maxStamina = input.maxStamina ?? 10;
-  const maxMana = input.maxMana ?? 10;
+  const coreStats = {
+    strength: 'F',
+    agility: 'F',
+    dexterity: 'F',
+    resilience: 'F',
+    magic: 'F',
+    willpower: 'F',
+    acumen: 'F',
+    charisma: 'F',
+    luck: 'F',
+    ...(input.coreStats ?? {}),
+  };
+
+  const maxMana = input.maxMana ?? getResourceCapFromRank(coreStats.magic);
+  const maxStamina = input.maxStamina ?? getResourceCapFromRank(coreStats.resilience);
+  const maxHp = input.maxHp ?? 8;
 
   const character = await Character.create({
     userId: user.id,
     name: input.name,
+    playerName: input.playerName ?? '',
+    gender: input.gender ?? '',
+    race: input.race ?? '',
+    age: input.age ?? null,
     background: input.background ?? '',
     level: input.level ?? 1,
-    currentHp: maxHp,
+    statPoints: input.statPoints ?? 1,
+    skillPoints: input.skillPoints ?? 1,
+    coreStats,
+    currentHp: input.currentHp ?? maxHp,
     maxHp,
-    currentStamina: maxStamina,
+    currentStamina: input.currentStamina ?? maxStamina,
     maxStamina,
-    currentMana: maxMana,
+    currentMana: input.currentMana ?? maxMana,
     maxMana,
-    strength: input.strength ?? 10,
-    dexterity: input.dexterity ?? 10,
-    constitution: input.constitution ?? 10,
-    intelligence: input.intelligence ?? 10,
-    wisdom: input.wisdom ?? 10,
-    charisma: input.charisma ?? 10,
-    skills: [],
+    wounds: input.wounds ?? 0,
+    competencyStates: input.competencyStates ?? [],
+    skillStates: input.skillStates ?? [],
+    titleIds: input.titleIds ?? [],
+    itemStates: input.itemStates ?? [],
   });
 
   await User.findByIdAndUpdate(
@@ -49,5 +69,5 @@ export async function handler(event) {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
-  return toPlainDocument(character);
+  return serializeCharacterSheet(character);
 }

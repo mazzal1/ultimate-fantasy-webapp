@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Button, Input, TextArea, tokens } from '../../design-system';
+import { useI18n } from '../../hooks/useI18n';
 import type { CampaignInput } from '../../types/campaign';
 
 export function CampaignForm({ initialValue, onSubmit }: { initialValue?: Partial<CampaignInput>; onSubmit: (input: CampaignInput) => Promise<void> | void }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<CampaignInput>(useMemo(() => ({ name: '', description: '', notes: '', ...initialValue }), [initialValue]));
 
   return (
@@ -13,10 +15,10 @@ export function CampaignForm({ initialValue, onSubmit }: { initialValue?: Partia
       }}
       style={{ display: 'grid', gap: tokens.spacing.md }}
     >
-      <Input label="Name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-      <Input label="Description" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
-      <TextArea label="Notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
-      <Button type="submit">Save campaign</Button>
+      <Input label={t('forms.name')} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+      <Input label={t('forms.description')} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
+      <TextArea label={t('forms.notes')} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
+      <Button type="submit">{t('forms.saveCampaign')}</Button>
     </form>
   );
 }

@@ -44,3 +44,5 @@ vitest.config.timestamp-*
 # Misc
 .cache/
 .eslintcache
+
+docs/game-system-srd/**/*

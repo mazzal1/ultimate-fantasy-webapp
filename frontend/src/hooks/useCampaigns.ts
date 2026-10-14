@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { assignCharacterToCampaign, createCampaign, getCampaign, joinCampaign, listCampaigns, updateCampaign } from '../api/campaigns';
+import { assignCharacterToCampaign, createCampaign, getCampaign, joinCampaign, listCampaignCharacters, listCampaigns, updateCampaign } from '../api/campaigns';
 import { useApiContext } from '../contexts/ApiContext';
 import type { Campaign, CampaignInput } from '../types/campaign';
 import { validateCampaignInput } from '../utils/validation';
@@ -70,5 +70,7 @@ export function useCampaigns() {
     [graphqlClient],
   );
 
-  return { campaigns, loading, error, loadCampaigns, create, getById, update, join, assignCharacter };
+  const listCharacters = useCallback((campaignId: string) => listCampaignCharacters(graphqlClient, campaignId), [graphqlClient]);
+
+  return { campaigns, loading, error, loadCampaigns, create, getById, update, join, assignCharacter, listCharacters };
 }

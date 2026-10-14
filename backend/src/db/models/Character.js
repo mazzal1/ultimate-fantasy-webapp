@@ -9,6 +9,26 @@ const characterSortFields = {
   level: 'level',
 };
 
+const defaultCoreStats = {
+  strength: 'F',
+  agility: 'F',
+  dexterity: 'F',
+  resilience: 'F',
+  magic: 'F',
+  willpower: 'F',
+  acumen: 'F',
+  charisma: 'F',
+  luck: 'F',
+};
+
+function normalizeStateList(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry) => entry && typeof entry === 'object');
+}
+
 function fromRow(row) {
   if (!row) {
     return null;
@@ -18,21 +38,26 @@ function fromRow(row) {
     id: row.id,
     userId: row.user_id,
     name: row.name,
-    background: row.background,
+    playerName: row.player_name ?? '',
+    gender: row.gender ?? '',
+    race: row.race ?? '',
+    age: row.age,
+    background: row.background ?? '',
     level: row.level,
-    currentHp: row.current_hp,
-    maxHp: row.max_hp,
-    currentStamina: row.current_stamina,
-    maxStamina: row.max_stamina,
+    statPoints: row.stat_points ?? 1,
+    skillPoints: row.skill_points ?? 1,
+    coreStats: { ...defaultCoreStats, ...(row.core_stats ?? {}) },
+    currentHp: row.current_hp ?? 8,
+    maxHp: row.max_hp ?? 8,
     currentMana: row.current_mana,
     maxMana: row.max_mana,
-    strength: row.strength,
-    dexterity: row.dexterity,
-    constitution: row.constitution,
-    intelligence: row.intelligence,
-    wisdom: row.wisdom,
-    charisma: row.charisma,
-    skills: row.skills ?? [],
+    currentStamina: row.current_stamina,
+    maxStamina: row.max_stamina,
+    wounds: row.wounds ?? 0,
+    competencyStates: normalizeStateList(row.competency_states),
+    skillStates: normalizeStateList(row.skill_states),
+    titleIds: row.title_ids ?? [],
+    itemStates: normalizeStateList(row.item_states),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
@@ -50,21 +75,26 @@ class CharacterDocument {
         SET
           user_id = $2,
           name = $3,
-          background = $4,
-          level = $5,
-          current_hp = $6,
-          max_hp = $7,
-          current_stamina = $8,
-          max_stamina = $9,
-          current_mana = $10,
-          max_mana = $11,
-          strength = $12,
-          dexterity = $13,
-          constitution = $14,
-          intelligence = $15,
-          wisdom = $16,
-          charisma = $17,
-          skills = $18,
+          player_name = $4,
+          gender = $5,
+          race = $6,
+          age = $7,
+          background = $8,
+          level = $9,
+          stat_points = $10,
+          skill_points = $11,
+          core_stats = $12::jsonb,
+          current_hp = $13,
+          max_hp = $14,
+          current_mana = $15,
+          max_mana = $16,
+          current_stamina = $17,
+          max_stamina = $18,
+          wounds = $19,
+          competency_states = $20::jsonb,
+          skill_states = $21::jsonb,
+          title_ids = $22,
+          item_states = $23::jsonb,
           updated_at = NOW()
         WHERE id = $1
         RETURNING *
@@ -73,21 +103,26 @@ class CharacterDocument {
         this.id,
         this.userId,
         this.name,
+        this.playerName ?? '',
+        this.gender ?? '',
+        this.race ?? '',
+        this.age ?? null,
         this.background ?? '',
         this.level ?? 1,
-        this.currentHp ?? 10,
-        this.maxHp ?? 10,
-        this.currentStamina ?? 10,
-        this.maxStamina ?? 10,
-        this.currentMana ?? 10,
-        this.maxMana ?? 10,
-        this.strength ?? 10,
-        this.dexterity ?? 10,
-        this.constitution ?? 10,
-        this.intelligence ?? 10,
-        this.wisdom ?? 10,
-        this.charisma ?? 10,
-        this.skills ?? [],
+        this.statPoints ?? 1,
+        this.skillPoints ?? 1,
+        JSON.stringify({ ...defaultCoreStats, ...(this.coreStats ?? {}) }),
+        this.currentHp ?? 8,
+        this.maxHp ?? 8,
+        this.currentMana ?? 0,
+        this.maxMana ?? 0,
+        this.currentStamina ?? 0,
+        this.maxStamina ?? 0,
+        this.wounds ?? 0,
+        JSON.stringify(this.competencyStates ?? []),
+        JSON.stringify(this.skillStates ?? []),
+        this.titleIds ?? [],
+        JSON.stringify(this.itemStates ?? []),
       ],
     );
 
@@ -105,21 +140,26 @@ class CharacterDocument {
       id: this.id,
       userId: this.userId,
       name: this.name,
+      playerName: this.playerName,
+      gender: this.gender,
+      race: this.race,
+      age: this.age,
       background: this.background,
       level: this.level,
+      statPoints: this.statPoints,
+      skillPoints: this.skillPoints,
+      coreStats: this.coreStats,
       currentHp: this.currentHp,
       maxHp: this.maxHp,
-      currentStamina: this.currentStamina,
-      maxStamina: this.maxStamina,
       currentMana: this.currentMana,
       maxMana: this.maxMana,
-      strength: this.strength,
-      dexterity: this.dexterity,
-      constitution: this.constitution,
-      intelligence: this.intelligence,
-      wisdom: this.wisdom,
-      charisma: this.charisma,
-      skills: this.skills ?? [],
+      currentStamina: this.currentStamina,
+      maxStamina: this.maxStamina,
+      wounds: this.wounds,
+      competencyStates: this.competencyStates ?? [],
+      skillStates: this.skillStates ?? [],
+      titleIds: this.titleIds ?? [],
+      itemStates: this.itemStates ?? [],
       createdAt: toIsoString(this.createdAt),
       updatedAt: toIsoString(this.updatedAt),
     };
@@ -131,12 +171,12 @@ export const Character = {
     const { rows } = await runQuery(
       `
         INSERT INTO characters (
-          id, user_id, name, background, level, current_hp, max_hp, current_stamina, max_stamina,
-          current_mana, max_mana, strength, dexterity, constitution, intelligence, wisdom, charisma, skills
+          id, user_id, name, player_name, gender, race, age, background, level, stat_points, skill_points, core_stats,
+          current_hp, max_hp, current_mana, max_mana, current_stamina, max_stamina, wounds, competency_states, skill_states, title_ids, item_states
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9,
-          $10, $11, $12, $13, $14, $15, $16, $17, $18
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb,
+          $13, $14, $15, $16, $17, $18, $19, $20::jsonb, $21::jsonb, $22, $23::jsonb
         )
         RETURNING *
       `,
@@ -144,21 +184,26 @@ export const Character = {
         data.id ?? randomUUID(),
         data.userId,
         data.name,
+        data.playerName ?? '',
+        data.gender ?? '',
+        data.race ?? '',
+        data.age ?? null,
         data.background ?? '',
         data.level ?? 1,
-        data.currentHp ?? 10,
-        data.maxHp ?? 10,
-        data.currentStamina ?? 10,
-        data.maxStamina ?? 10,
-        data.currentMana ?? 10,
-        data.maxMana ?? 10,
-        data.strength ?? 10,
-        data.dexterity ?? 10,
-        data.constitution ?? 10,
-        data.intelligence ?? 10,
-        data.wisdom ?? 10,
-        data.charisma ?? 10,
-        data.skills ?? [],
+        data.statPoints ?? 1,
+        data.skillPoints ?? 1,
+        JSON.stringify({ ...defaultCoreStats, ...(data.coreStats ?? {}) }),
+        data.currentHp ?? 8,
+        data.maxHp ?? 8,
+        data.currentMana ?? 0,
+        data.maxMana ?? 0,
+        data.currentStamina ?? 0,
+        data.maxStamina ?? 0,
+        data.wounds ?? 0,
+        JSON.stringify(data.competencyStates ?? []),
+        JSON.stringify(data.skillStates ?? []),
+        data.titleIds ?? [],
+        JSON.stringify(data.itemStates ?? []),
       ],
     );
 
@@ -168,6 +213,15 @@ export const Character = {
   async findById(id) {
     const { rows } = await runQuery('SELECT * FROM characters WHERE id = $1 LIMIT 1', [id]);
     return fromRow(rows[0]);
+  },
+
+  async findByIds(ids = []) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return [];
+    }
+
+    const { rows } = await runQuery('SELECT * FROM characters WHERE id = ANY($1)', [ids]);
+    return rows.map((row) => fromRow(row));
   },
 
   async countDocuments(filter = {}) {
@@ -193,6 +247,11 @@ export const Character = {
         if (filter.userId) {
           params.push(filter.userId);
           whereClauses.push(`user_id = $${params.length}`);
+        }
+
+        if (filter.idIn) {
+          params.push(filter.idIn);
+          whereClauses.push(`id = ANY($${params.length})`);
         }
 
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
